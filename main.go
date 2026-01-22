@@ -91,6 +91,6 @@ func main() {
 
 	err := http.ListenAndServe(":"+port, nil)
 	if err != nil {
-		fmt.Println("gagal running server")
+		fmt.Printf("gagal running server: %v\n", err)
 	}
 }
