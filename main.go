@@ -11,27 +11,46 @@ import (
 //go:embed swagger.yaml
 var swaggerYAML []byte
 
+func corsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Set CORS headers
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+		// Handle preflight requests
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
 func main() {
+	mux := http.NewServeMux()
+
 	// GET localhost:8080/api/produk/{id}
 	// PUT localhost:8080/api/produk/{id}
 	// DELETE localhost:8080/api/produk/{id}
-	http.HandleFunc("/api/produk/", handleProdukDetail)
+	mux.HandleFunc("/api/produk/", handleProdukDetail)
 
 	// GET localhost:8080/api/produk
 	// POST localhost:8080/api/produk
-	http.HandleFunc("/api/produk", handleProdukList)
+	mux.HandleFunc("/api/produk", handleProdukList)
 
 	// GET localhost:8080/api/categories/{id}
 	// PUT localhost:8080/api/categories/{id}
 	// DELETE localhost:8080/api/categories/{id}
-	http.HandleFunc("/api/categories/", handleCategoryDetail)
+	mux.HandleFunc("/api/categories/", handleCategoryDetail)
 
 	// GET localhost:8080/api/categories
 	// POST localhost:8080/api/categories
-	http.HandleFunc("/api/categories", handleCategoryList)
+	mux.HandleFunc("/api/categories", handleCategoryList)
 
 	// localhost:8080/health
-	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{
 			"status":  "OK",
@@ -41,13 +60,13 @@ func main() {
 
 	// Swagger UI handling
 	// 1. Serve swagger.yaml form embedded binary
-	http.HandleFunc("/swagger.yaml", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/swagger.yaml", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/yaml")
 		w.Write(swaggerYAML)
 	})
 
 	// 2. Serve Swagger UI HTML
-	http.HandleFunc("/swagger", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/swagger", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
 		fmt.Fprint(w, `<!DOCTYPE html>
 <html lang="en">
@@ -73,7 +92,7 @@ func main() {
 	})
 
 	// 3. Redirect / to /swagger
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/" {
 			http.Redirect(w, r, "/swagger", http.StatusFound)
 			return
@@ -89,7 +108,7 @@ func main() {
 
 	fmt.Println("Server running di port " + port)
 
-	err := http.ListenAndServe(":"+port, nil)
+	err := http.ListenAndServe(":"+port, corsMiddleware(mux))
 	if err != nil {
 		fmt.Printf("gagal running server: %v\n", err)
 	}
