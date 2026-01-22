@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 )
 
 func main() {
@@ -75,9 +76,15 @@ func main() {
 		http.NotFound(w, r)
 	})
 
-	fmt.Println("Server running di localhost:8080")
+	// Get port from environment variable or default to 8080
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
 
-	err := http.ListenAndServe(":8080", nil)
+	fmt.Println("Server running di port " + port)
+
+	err := http.ListenAndServe(":"+port, nil)
 	if err != nil {
 		fmt.Println("gagal running server")
 	}
