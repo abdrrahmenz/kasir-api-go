@@ -1,11 +1,15 @@
 package main
 
 import (
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
 )
+
+//go:embed swagger.yaml
+var swaggerYAML []byte
 
 func main() {
 	// GET localhost:8080/api/produk/{id}
@@ -36,9 +40,10 @@ func main() {
 	})
 
 	// Swagger UI handling
-	// 1. Serve swagger.yaml
+	// 1. Serve swagger.yaml form embedded binary
 	http.HandleFunc("/swagger.yaml", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, "swagger.yaml")
+		w.Header().Set("Content-Type", "text/yaml")
+		w.Write(swaggerYAML)
 	})
 
 	// 2. Serve Swagger UI HTML
