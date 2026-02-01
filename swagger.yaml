@@ -13,6 +13,11 @@ components:
   schemas:
     Product:
       type: object
+      required:
+        - name
+        - price
+        - stock
+        - category_id
       properties:
         id:
           type: integer
@@ -26,6 +31,31 @@ components:
         stock:
           type: integer
           example: 10
+        category_id:
+          type: integer
+          example: 1
+
+    ProductDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: "Indomie Godog"
+        price:
+          type: integer
+          example: 3500
+        stock:
+          type: integer
+          example: 10
+        category_id:
+          type: integer
+          example: 1
+        category_name:
+          type: string
+          example: "Makanan"
     
     Category:
       type: object
@@ -53,7 +83,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Product'
+                  $ref: '#/components/schemas/ProductDetail'
     post:
       summary: Create a new product
       tags: [Product]
@@ -69,6 +99,7 @@ paths:
                   name: "Indomie Godog"
                   price: 3500
                   stock: 10
+                  category_id: 1
       responses:
         '201':
           description: Product created
@@ -93,7 +124,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Product'
+                $ref: '#/components/schemas/ProductDetail'
         '404':
           description: Product not found
     put:
@@ -117,6 +148,7 @@ paths:
                   name: "Indomie Goreng"
                   price: 4000
                   stock: 15
+                  category_id: 1
       responses:
         '200':
           description: Product updated

@@ -47,6 +47,10 @@ func (h *ProductHandler) Create(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
+	if product.CategoryID <= 0 {
+		http.Error(w, "category_id is required", http.StatusBadRequest)
+		return
+	}
 
 	err = h.service.Create(&product)
 	if err != nil {
@@ -104,6 +108,10 @@ func (h *ProductHandler) Update(w http.ResponseWriter, r *http.Request) {
 	err = json.NewDecoder(r.Body).Decode(&product)
 	if err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+	if product.CategoryID <= 0 {
+		http.Error(w, "category_id is required", http.StatusBadRequest)
 		return
 	}
 
