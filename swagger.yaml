@@ -4,7 +4,7 @@ info:
   description: API documentation for Kasir Application (Produk & Categories)
   version: 1.0.0
 servers:
-  - url: https://go-kasir-api.zeabur.app
+  - url: https://kasir-api-go-production-8930.up.railway.app
     description: Production Server
   - url: http://localhost:8080
     description: Local Development Server
