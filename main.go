@@ -1,15 +1,29 @@
 package main
 
 import (
+	"database/sql"
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"kasir-api/database"
+	"kasir-api/handlers"
+	"kasir-api/repositories"
+	"kasir-api/services"
+	"log"
 	"net/http"
 	"os"
+	"strings"
+
+	"github.com/spf13/viper"
 )
 
 //go:embed swagger.yaml
 var swaggerYAML []byte
+
+type Config struct {
+	Port   string `mapstructure:"PORT"`
+	DBConn string `mapstructure:"DB_CONN"`
+}
 
 func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -29,25 +43,78 @@ func corsMiddleware(next http.Handler) http.Handler {
 }
 
 func main() {
+	// Initialize Viper
+	viper.AutomaticEnv()
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+
+	if _, err := os.Stat(".env"); err == nil {
+		viper.SetConfigFile(".env")
+		if err := viper.ReadInConfig(); err != nil {
+			log.Printf("Error reading .env file: %v\n", err)
+		}
+	}
+
+	// Load configuration
+	config := Config{
+		Port:   viper.GetString("PORT"),
+		DBConn: viper.GetString("DB_CONN"),
+	}
+
+	// Set default port if not configured
+	if config.Port == "" {
+		config.Port = "8080"
+	}
+
+	// Debug: print config values
+	log.Printf("Config - Port: %s\n", config.Port)
+	log.Printf("Config - DBConn: %s\n", config.DBConn)
+
+	// Setup database (make it optional for development)
+	var db *sql.DB
+	var err error
+	if config.DBConn != "" {
+		db, err = database.InitDB(config.DBConn)
+		if err != nil {
+			log.Printf("Warning: Failed to initialize database: %v\n", err)
+			log.Println("Continuing without database connection...")
+		} else {
+			defer db.Close()
+		}
+	} else {
+		log.Println("No DB_CONN configured, running without database")
+	}
+
+	// Initialize repositories, services, and handlers
+
+	// Product
+	productRepo := repositories.NewProductRepository(db)
+	productService := services.NewProductService(productRepo)
+	productHandler := handlers.NewProductHandler(productService)
+
+	// Category
+	categoryRepo := repositories.NewCategoryRepository(db)
+	categoryService := services.NewCategoryService(categoryRepo)
+	categoryHandler := handlers.NewCategoryHandler(categoryService)
+
 	mux := http.NewServeMux()
 
 	// GET localhost:8080/api/produk/{id}
 	// PUT localhost:8080/api/produk/{id}
 	// DELETE localhost:8080/api/produk/{id}
-	mux.HandleFunc("/api/produk/", handleProdukDetail)
+	mux.HandleFunc("/api/produk/", productHandler.HandleProductByID)
 
 	// GET localhost:8080/api/produk
 	// POST localhost:8080/api/produk
-	mux.HandleFunc("/api/produk", handleProdukList)
+	mux.HandleFunc("/api/produk", productHandler.HandleProducts)
 
 	// GET localhost:8080/api/categories/{id}
 	// PUT localhost:8080/api/categories/{id}
 	// DELETE localhost:8080/api/categories/{id}
-	mux.HandleFunc("/api/categories/", handleCategoryDetail)
+	mux.HandleFunc("/api/categories/", categoryHandler.HandleCategoryByID)
 
 	// GET localhost:8080/api/categories
 	// POST localhost:8080/api/categories
-	mux.HandleFunc("/api/categories", handleCategoryList)
+	mux.HandleFunc("/api/categories", categoryHandler.HandleCategories)
 
 	// localhost:8080/health
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
@@ -62,6 +129,9 @@ func main() {
 	// 1. Serve swagger.yaml form embedded binary
 	mux.HandleFunc("/swagger.yaml", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/yaml")
+		w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate")
+		w.Header().Set("Pragma", "no-cache")
+		w.Header().Set("Expires", "0")
 		w.Write(swaggerYAML)
 	})
 
@@ -82,7 +152,7 @@ func main() {
 <script>
   window.onload = () => {
     window.ui = SwaggerUIBundle({
-      url: '/swagger.yaml',
+	  url: '/swagger.yaml?v=' + Date.now(),
       dom_id: '#swagger-ui',
     });
   };
@@ -100,16 +170,11 @@ func main() {
 		http.NotFound(w, r)
 	})
 
-	// Get port from environment variable or default to 8080
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-	}
+	addr := "0.0.0.0:" + config.Port
+	fmt.Println("Server running di", addr)
 
-	fmt.Println("Server running di port " + port)
-
-	err := http.ListenAndServe(":"+port, corsMiddleware(mux))
-	if err != nil {
-		fmt.Printf("gagal running server: %v\n", err)
+	listenErr := http.ListenAndServe(addr, corsMiddleware(mux))
+	if listenErr != nil {
+		fmt.Printf("gagal running server: %v\n", listenErr)
 	}
 }
