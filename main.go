@@ -96,7 +96,20 @@ func main() {
 	categoryService := services.NewCategoryService(categoryRepo)
 	categoryHandler := handlers.NewCategoryHandler(categoryService)
 
+	// Transaction
+	transactionRepo := repositories.NewTransactionRepository(db)
+	transactionService := services.NewTransactionService(transactionRepo)
+	transactionHandler := handlers.NewTransactionHandler(transactionService)
+
+	// Report
+	reportRepo := repositories.NewReportRepository(db)
+	reportService := services.NewReportService(reportRepo)
+	reportHandler := handlers.NewReportHandler(reportService)
+
 	mux := http.NewServeMux()
+
+	// POST localhost:8080/api/checkout
+	mux.HandleFunc("/api/checkout", transactionHandler.HandleCheckout)
 
 	// GET localhost:8080/api/produk/{id}
 	// PUT localhost:8080/api/produk/{id}
@@ -115,6 +128,12 @@ func main() {
 	// GET localhost:8080/api/categories
 	// POST localhost:8080/api/categories
 	mux.HandleFunc("/api/categories", categoryHandler.HandleCategories)
+
+	// GET localhost:8080/api/report/hari-ini
+	mux.HandleFunc("/api/report/hari-ini", reportHandler.HandleTodayReport)
+
+	// GET localhost:8080/api/report?start_date=2026-01-01&end_date=2026-02-01
+	mux.HandleFunc("/api/report", reportHandler.HandleDateRangeReport)
 
 	// localhost:8080/health
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {

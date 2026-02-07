@@ -70,11 +70,120 @@ components:
           type: string
           example: "Berbagai jenis makanan instan"
 
+    CheckoutRequest:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            required:
+              - product_id
+              - quantity
+            properties:
+              product_id:
+                type: integer
+                example: 1
+              quantity:
+                type: integer
+                example: 2
+
+    Transaction:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        total_amount:
+          type: integer
+          example: 7000
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-02-07T10:30:00Z"
+        details:
+          type: array
+          items:
+            $ref: '#/components/schemas/TransactionDetail'
+
+    TransactionDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        transaction_id:
+          type: integer
+          example: 1
+        product_id:
+          type: integer
+          example: 1
+        product_name:
+          type: string
+          example: "Indomie Godog"
+        quantity:
+          type: integer
+          example: 2
+        subtotal:
+          type: integer
+          example: 7000
+
+    BestSellingProduct:
+      type: object
+      properties:
+        nama:
+          type: string
+          example: "Indomie Godog"
+        qty_terjual:
+          type: integer
+          example: 15
+
+    DailySalesReport:
+      type: object
+      properties:
+        total_revenue:
+          type: integer
+          example: 150000
+        total_transaksi:
+          type: integer
+          example: 12
+        produk_terlaris:
+          $ref: '#/components/schemas/BestSellingProduct'
+
+    DateRangeReport:
+      type: object
+      properties:
+        start_date:
+          type: string
+          example: "2026-01-01"
+        end_date:
+          type: string
+          example: "2026-02-01"
+        total_revenue:
+          type: integer
+          example: 3500000
+        total_transaksi:
+          type: integer
+          example: 250
+        produk_terlaris:
+          $ref: '#/components/schemas/BestSellingProduct'
+
 paths:
   /api/produk:
     get:
       summary: List all products
+      description: Returns all products. Optionally filter by product name.
       tags: [Product]
+      parameters:
+        - name: name
+          in: query
+          required: false
+          description: Filter products by name (case-insensitive, partial match)
+          schema:
+            type: string
+            example: "Indomie"
       responses:
         '200':
           description: Successful operation
@@ -286,6 +395,93 @@ paths:
                     example: "Category deleted successfully"
         '404':
           description: Category not found
+
+  /api/checkout:
+    post:
+      summary: Checkout / create a transaction
+      description: Creates a new transaction by purchasing one or more products. Stock will be reduced accordingly.
+      tags: [Transaction]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckoutRequest'
+            examples:
+              single_item:
+                summary: Single item checkout
+                value:
+                  items:
+                    - product_id: 1
+                      quantity: 2
+              multiple_items:
+                summary: Multiple items checkout
+                value:
+                  items:
+                    - product_id: 1
+                      quantity: 2
+                    - product_id: 3
+                      quantity: 1
+      responses:
+        '200':
+          description: Transaction created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transaction'
+        '400':
+          description: Invalid request body
+        '500':
+          description: Internal server error (e.g. product not found, insufficient stock)
+
+  /api/report/hari-ini:
+    get:
+      summary: Get today's sales report
+      description: Returns total revenue, total transactions, and best-selling product for today.
+      tags: [Report]
+      responses:
+        '200':
+          description: Today's sales report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DailySalesReport'
+        '500':
+          description: Internal server error
+
+  /api/report:
+    get:
+      summary: Get sales report by date range
+      description: Returns total revenue, total transactions, and best-selling product within a date range.
+      tags: [Report]
+      parameters:
+        - name: start_date
+          in: query
+          required: true
+          description: Start date (inclusive)
+          schema:
+            type: string
+            format: date
+            example: "2026-01-01"
+        - name: end_date
+          in: query
+          required: true
+          description: End date (inclusive)
+          schema:
+            type: string
+            format: date
+            example: "2026-02-01"
+      responses:
+        '200':
+          description: Date range sales report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DateRangeReport'
+        '400':
+          description: Missing or invalid date parameters
+        '500':
+          description: Internal server error
 
   /health:
     get:
